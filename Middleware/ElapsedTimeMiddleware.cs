@@ -14,8 +14,15 @@ public class ElapsedTimeMiddleware
     {
         var stopwatch = Stopwatch.StartNew();
 
-        await _next(context);
+        // Headers go out with the first byte of the body. By the time _next returns,
+        // the endpoint may already have written it, so set the header just before
+        // the response starts instead.
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers[HeaderName] = stopwatch.ElapsedMilliseconds.ToString();
+            return Task.CompletedTask;
+        });
 
-        context.Response.Headers[HeaderName] = stopwatch.ElapsedMilliseconds.ToString();
+        await _next(context);
     }
 }
